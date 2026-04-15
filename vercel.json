@@ -1,0 +1,15 @@
+{
+  "name": "aghaz-api",
+  "buildCommand": "npm install",
+  "startCommand": "npm start",
+  "env": {
+    "NODE_ENV": "production",
+    "PORT": "@port",
+    "MONGODB_URI": "@mongodb_uri",
+    "JWT_SECRET": "@jwt_secret",
+    "IMAGEKIT_PUBLIC_KEY": "@imagekit_public_key",
+    "IMAGEKIT_PRIVATE_KEY": "@imagekit_private_key",
+    "IMAGEKIT_URL_ENDPOINT": "@imagekit_url_endpoint",
+    "CLIENT_URL": "@client_url"
+  }
+}
