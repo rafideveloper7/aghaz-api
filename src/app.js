@@ -31,53 +31,17 @@ const app = express();
 app.use(helmet());
 
 // CORS configuration
-const allowedOrigins = [];
+const corsOptions = {
+  // Reflect the request origin so browsers accept credentialed requests
+  // from any origin.
+  origin: true,
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Cookie'],
+};
 
-// Add production origins from environment variable
-if (process.env.CLIENT_URL) {
-  // Support comma-separated list of URLs
-  const urls = process.env.CLIENT_URL.split(',').map(url => url.trim());
-  allowedOrigins.push(...urls);
-}
-
-// Add Vercel preview deployments (dynamic)
-if (process.env.VERCEL_URL) {
-  allowedOrigins.push(`https://${process.env.VERCEL_URL}`);
-}
-
-// Allow localhost patterns in development
-if (process.env.NODE_ENV !== 'production') {
-  allowedOrigins.push('http://localhost:3000');
-  allowedOrigins.push('http://localhost:3001');
-  allowedOrigins.push('http://127.0.0.1:3000');
-  allowedOrigins.push('http://127.0.0.1:3001');
-  allowedOrigins.push('http://localhost:5000');
-}
-
-app.use(
-  cors({
-    origin: function (origin, callback) {
-      // Allow requests with no origin (mobile apps, curl, etc.)
-      if (!origin) {
-        return callback(null, true);
-      }
-      
-      // Check if origin is allowed
-      if (allowedOrigins.includes(origin)) {
-        callback(null, true);
-      } else {
-        // In development, log the blocked origin for debugging
-        if (process.env.NODE_ENV !== 'production') {
-          console.warn(`CORS blocked origin: ${origin}`);
-        }
-        callback(new Error('Not allowed by CORS'));
-      }
-    },
-    credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'Cookie'],
-  })
-);
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions));
 
 // Request parsing middleware
 app.use(express.json({ limit: '10mb' }));
