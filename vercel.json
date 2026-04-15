@@ -13,12 +13,12 @@
   ],
   "env": {
     "NODE_ENV": "production",
-    "PORT": "@port",
-    "MONGODB_URI": "@mongodb_uri",
-    "JWT_SECRET": "@jwt_secret",
-    "IMAGEKIT_PUBLIC_KEY": "@imagekit_public_key",
-    "IMAGEKIT_PRIVATE_KEY": "@imagekit_private_key",
-    "IMAGEKIT_URL_ENDPOINT": "@imagekit_url_endpoint",
-    "CLIENT_URL": "@client_url"
+    "PORT": "@PORT",
+    "MONGODB_URI": "@MONGODB_URI",
+    "JWT_SECRET": "@JWT_SECRET",
+    "IMAGEKIT_PUBLIC_KEY": "@IMAGEKIT_PUBLIC_KEY",
+    "IMAGEKIT_PRIVATE_KEY": "@IMAGEKIT_PRIVATE_KEY",
+    "IMAGEKIT_URL_ENDPOINT": "@IMAGEKIT_URL_ENDPOINT",
+    "CLIENT_URL": "@FRONTEND_URL"
   }
 }
