@@ -1,5 +1,4 @@
 const axios = require('axios');
-const FormData = require('form-data');
 
 const uploadToImageKit = async (file, folder = 'aghaz') => {
   const publicKey = process.env.IMAGEKIT_PUBLIC_KEY;
@@ -12,24 +11,22 @@ const uploadToImageKit = async (file, folder = 'aghaz') => {
 
   try {
     const fileName = `${Date.now()}-${file.originalname}`;
-    
-    const form = new FormData();
-    form.append('file', file.buffer, {
-      filename: file.originalname,
-      contentType: file.mimetype,
-    });
-    form.append('fileName', fileName);
-    form.append('folder', folder);
+    const base64 = file.buffer.toString('base64');
+    const mimeType = file.mimetype || 'image/jpeg';
     
     const auth = Buffer.from(`${privateKey}:`).toString('base64');
     
     const response = await axios.post(
       'https://api.imagekit.io/v1/files/upload',
-      form,
+      {
+        file: `data:${mimeType};base64,${base64}`,
+        fileName: fileName,
+        folder: folder,
+      },
       {
         headers: {
-          ...form.getHeaders(),
           'Authorization': `Basic ${auth}`,
+          'Content-Type': 'application/x-www-form-urlencoded',
         },
       }
     );
