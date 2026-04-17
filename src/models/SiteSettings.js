@@ -87,23 +87,31 @@ const siteSettingsSchema = new mongoose.Schema(
       type: String,
       default: 'Thank you for your order! We will contact you shortly to confirm your order details.',
     },
-    paymentMethods: {
-      type: [paymentMethodSchema],
-      default: [
-        {
-          code: 'cod',
-          label: 'Cash on Delivery',
-          type: 'cod',
-          instructions: 'Pay when you receive your order.',
-          isActive: true,
-          sortOrder: 0,
-        },
-      ],
-    },
-  },
-  {
-    timestamps: true,
-  }
+     paymentMethods: {
+       type: [paymentMethodSchema],
+       default: [
+         {
+           code: 'cod',
+           label: 'Cash on Delivery',
+           type: 'cod',
+           instructions: 'Pay when you receive your order.',
+           isActive: true,
+           sortOrder: 0,
+         },
+       ],
+     },
+     reviewsEnabled: {
+       type: Boolean,
+       default: true,
+     },
+     reviewsRequireApproval: {
+       type: Boolean,
+       default: true,
+     },
+   },
+   {
+     timestamps: true,
+   }
 );
 
 // Only one settings document should exist

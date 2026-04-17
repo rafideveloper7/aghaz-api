@@ -5,35 +5,52 @@ function sanitizeEmail(email) {
 }
 
 async function sendFormSubmitEmail({ subject, message, replyTo, payload }) {
-  const settings = await SiteSettings.findOne().lean();
-  const targetEmail = sanitizeEmail(settings?.formSubmitEmail || settings?.contactEmail);
+  try {
+    const settings = await SiteSettings.findOne().lean();
+    const targetEmail = sanitizeEmail(settings?.formSubmitEmail || settings?.contactEmail);
 
-  if (!targetEmail) {
-    return { sent: false, reason: 'missing-target-email' };
+    console.log('[FormSubmit] Attempting to send email to:', targetEmail);
+
+    if (!targetEmail) {
+      console.warn('[FormSubmit] No target email configured');
+      return { sent: false, reason: 'missing-target-email' };
+    }
+
+    const formData = new URLSearchParams();
+    formData.append('_subject', subject);
+    formData.append('_template', 'table');
+    formData.append('_captcha', 'false');
+    if (replyTo) formData.append('_replyto', replyTo);
+    formData.append('message', message);
+    
+    if (payload) {
+      Object.entries(payload).forEach(([key, value]) => {
+        formData.append(key, String(value));
+      });
+    }
+
+    const response = await fetch(`https://formsubmit.co/ajax/${encodeURIComponent(targetEmail)}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        Accept: 'application/json',
+      },
+      body: formData.toString(),
+    });
+
+    const responseText = await response.text();
+    console.log('[FormSubmit] Response status:', response.status);
+    console.log('[FormSubmit] Response body:', responseText);
+
+    if (!response.ok) {
+      throw new Error(`FormSubmit request failed with status ${response.status}: ${responseText}`);
+    }
+
+    return { sent: true, targetEmail };
+  } catch (error) {
+    console.error('[FormSubmit] Error sending email:', error.message);
+    throw error;
   }
-
-  const response = await fetch(`https://formsubmit.co/ajax/${encodeURIComponent(targetEmail)}`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Accept: 'application/json',
-    },
-    body: JSON.stringify({
-      _subject: subject,
-      _template: 'table',
-      _captcha: 'false',
-      _replyto: replyTo || targetEmail,
-      message,
-      ...payload,
-    }),
-  });
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`FormSubmit request failed with status ${response.status}: ${errorText}`);
-  }
-
-  return { sent: true, targetEmail };
 }
 
 module.exports = {

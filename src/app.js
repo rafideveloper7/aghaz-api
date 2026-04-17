@@ -25,6 +25,8 @@ const announcementRoutes = require('./routes/announcement.routes');
 const settingsRoutes = require('./routes/settings.routes');
 const footerSocialRoutes = require('./routes/footerSocial.routes');
 const contactMessageRoutes = require('./routes/contactMessage.routes');
+const reviewRoutes = require('./routes/review.routes');
+const imageRoutes = require('./routes/image.routes');
 
 const app = express();
 
@@ -111,6 +113,8 @@ app.use('/api/announcement', announcementRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/footer-social', footerSocialRoutes);
 app.use('/api/contact-messages', contactMessageRoutes);
+app.use('/api/reviews', reviewRoutes);
+app.use('/api/images', imageRoutes);
 
 // 404 handler - for undefined routes
 app.use((req, res) => {

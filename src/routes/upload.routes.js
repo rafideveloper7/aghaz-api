@@ -7,7 +7,10 @@ const {
 } = require('../controllers/uploadController');
 const { protect } = require('../middleware/auth');
 
-// All upload routes require authentication
+// Public route for review image uploads (no auth required)
+router.post('/review-image', uploadSingleImage);
+
+// All other upload routes require authentication
 router.use(protect);
 
 router.post('/image', uploadSingleImage);
