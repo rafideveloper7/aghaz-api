@@ -1,9 +1,11 @@
 const { body } = require('express-validator');
 const Order = require('../models/Order');
 const Product = require('../models/Product');
+const SiteSettings = require('../models/SiteSettings');
 const ApiResponse = require('../utils/apiResponse');
 const asyncHandler = require('../utils/asyncHandler');
 const { ORDER_STATUS } = require('../config/constants');
+const { sendFormSubmitEmail } = require('../utils/formSubmitNotifier');
 
 const createOrderValidation = [
   body('customerName').notEmpty().withMessage('Customer name is required').trim(),
@@ -14,6 +16,8 @@ const createOrderValidation = [
   body('products.*.product').isMongoId().withMessage('Valid product ID is required'),
   body('products.*.quantity').isInt({ min: 1 }).withMessage('Quantity must be at least 1'),
   body('totalAmount').isFloat({ min: 0 }).withMessage('Total amount must be a positive number'),
+  body('paymentMethodCode').notEmpty().withMessage('Payment method is required').trim(),
+  body('paymentReference').optional().trim(),
 ];
 
 const updateOrderStatusValidation = [
@@ -24,7 +28,19 @@ const updateOrderStatusValidation = [
 ];
 
 const createOrder = asyncHandler(async (req, res) => {
-  const { products } = req.body;
+  const { products, paymentMethodCode, paymentReference } = req.body;
+  const settings = await SiteSettings.findOne().lean();
+  const paymentMethods = settings?.paymentMethods || [];
+  const selectedPaymentMethod =
+    paymentMethods.find((method) => method.isActive && method.code === paymentMethodCode) ||
+    paymentMethods.find((method) => method.isActive && method.type === 'cod') ||
+    paymentMethods[0];
+
+  if (!selectedPaymentMethod) {
+    return res.status(400).json(
+      ApiResponse.error('Selected payment method is not available', 400)
+    );
+  }
 
   // Verify products exist and calculate total
   let calculatedTotal = 0;
@@ -62,15 +78,54 @@ const createOrder = asyncHandler(async (req, res) => {
     });
   }
 
+  const deliveryFee = calculatedTotal >= 2000 ? 0 : 150;
+  const verifiedTotal = calculatedTotal + deliveryFee;
+
   const order = await Order.create({
     customerName: req.body.customerName,
     phone: req.body.phone,
     city: req.body.city,
     address: req.body.address,
     products: orderProducts,
-    totalAmount: req.body.totalAmount || calculatedTotal,
+    totalAmount: verifiedTotal,
+    paymentMethod: {
+      code: selectedPaymentMethod.code,
+      label: selectedPaymentMethod.label,
+      type: selectedPaymentMethod.type,
+    },
+    paymentDetails: {
+      accountTitle: selectedPaymentMethod.accountTitle || '',
+      accountNumber: selectedPaymentMethod.accountNumber || '',
+      iban: selectedPaymentMethod.iban || '',
+      paymentReference: paymentReference || '',
+    },
+    paymentStatus: selectedPaymentMethod.type === 'cod' ? 'unpaid' : 'awaiting_verification',
     notes: req.body.notes || '',
   });
+
+  try {
+    await sendFormSubmitEmail({
+      subject: `New order from ${order.customerName}`,
+      replyTo: req.body.email || undefined,
+      message: `A new order has been placed for Rs. ${order.totalAmount}.`,
+      payload: {
+        customerName: order.customerName,
+        phone: order.phone,
+        city: order.city,
+        address: order.address,
+        totalAmount: order.totalAmount,
+        paymentMethod: order.paymentMethod.label,
+        paymentStatus: order.paymentStatus,
+        paymentReference: order.paymentDetails.paymentReference || 'N/A',
+        orderId: order._id.toString(),
+        products: order.products.map(item => `${item.title} x${item.quantity} - Rs. ${item.price}`).join('\n'),
+        notes: order.notes || 'N/A',
+        submittedAt: order.createdAt.toISOString(),
+      },
+    });
+  } catch (error) {
+    console.error('Failed to send order FormSubmit email:', error.message);
+  }
 
   res.status(201).json(
     ApiResponse.success('Order created successfully', order)
@@ -129,6 +184,10 @@ const getOrders = asyncHandler(async (req, res) => {
       totalOrders,
       hasNextPage: parseInt(page) < totalPages,
       hasPrevPage: parseInt(page) > 1,
+      page: parseInt(page),
+      limit: parseInt(limit),
+      total: totalOrders,
+      pages: totalPages,
     })
   );
 });

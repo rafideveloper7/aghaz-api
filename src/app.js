@@ -24,6 +24,7 @@ const heroSlideRoutes = require('./routes/heroSlide.routes');
 const announcementRoutes = require('./routes/announcement.routes');
 const settingsRoutes = require('./routes/settings.routes');
 const footerSocialRoutes = require('./routes/footerSocial.routes');
+const contactMessageRoutes = require('./routes/contactMessage.routes');
 
 const app = express();
 
@@ -92,7 +93,8 @@ app.get('/', (req, res) => {
       heroSlides: '/api/hero-slides',
       announcement: '/api/announcement',
       settings: '/api/settings',
-      footerSocial: '/api/footer-social'
+      footerSocial: '/api/footer-social',
+      contactMessages: '/api/contact-messages'
     },
     health: '/health'
   });
@@ -108,6 +110,7 @@ app.use('/api/hero-slides', heroSlideRoutes);
 app.use('/api/announcement', announcementRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/footer-social', footerSocialRoutes);
+app.use('/api/contact-messages', contactMessageRoutes);
 
 // 404 handler - for undefined routes
 app.use((req, res) => {

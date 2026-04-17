@@ -53,6 +53,50 @@ const orderSchema = new mongoose.Schema(
       required: [true, 'Total amount is required'],
       min: [0, 'Total amount cannot be negative'],
     },
+    paymentMethod: {
+      code: {
+        type: String,
+        default: 'cod',
+        trim: true,
+      },
+      label: {
+        type: String,
+        default: 'Cash on Delivery',
+        trim: true,
+      },
+      type: {
+        type: String,
+        enum: ['cod', 'wallet', 'bank', 'other'],
+        default: 'cod',
+      },
+    },
+    paymentDetails: {
+      accountTitle: {
+        type: String,
+        default: '',
+        trim: true,
+      },
+      accountNumber: {
+        type: String,
+        default: '',
+        trim: true,
+      },
+      iban: {
+        type: String,
+        default: '',
+        trim: true,
+      },
+      paymentReference: {
+        type: String,
+        default: '',
+        trim: true,
+      },
+    },
+    paymentStatus: {
+      type: String,
+      enum: ['unpaid', 'awaiting_verification', 'paid'],
+      default: 'unpaid',
+    },
     status: {
       type: String,
       enum: ['pending', 'confirmed', 'shipped', 'delivered', 'cancelled'],
