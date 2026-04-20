@@ -4,22 +4,17 @@ let imagekitInstance = null;
 
 function getImageKit() {
   if (!imagekitInstance) {
-    const publicKeyRaw = process.env.IMAGEKIT_PUBLIC_KEY;
-    const privateKeyRaw = process.env.IMAGEKIT_PRIVATE_KEY;
+    const publicKey = process.env.IMAGEKIT_PUBLIC_KEY;
+    const privateKey = process.env.IMAGEKIT_PRIVATE_KEY;
     const urlEndpoint = process.env.IMAGEKIT_URL_ENDPOINT;
 
-    if (!publicKeyRaw || !privateKeyRaw || !urlEndpoint) {
+    if (!publicKey || !privateKey || !urlEndpoint) {
       throw new Error('ImageKit not configured. Set IMAGEKIT_PUBLIC_KEY, IMAGEKIT_PRIVATE_KEY, IMAGEKIT_URL_ENDPOINT.');
     }
 
-    // Strip 'public_' and 'private_' prefixes if present (ImageKit dashboard adds them for display)
-    const publicKey = publicKeyRaw.replace(/^public_/, '');
-    const privateKey = privateKeyRaw.replace(/^private_/, '');
-
-    console.log('🔧 ImageKit initialized:', {
-      urlEndpoint,
-      publicKeyPrefix: publicKey.substring(0, 8) + '...',
-    });
+    console.log('🔧 ImageKit initialized:');
+    console.log('   Endpoint:', urlEndpoint);
+    console.log('   Public Key:', publicKey.substring(0, 12) + '...');
 
     imagekitInstance = new ImageKit({
       publicKey,
@@ -31,29 +26,53 @@ function getImageKit() {
 }
 
 /**
- * Upload a file buffer to ImageKit
- * @param {Buffer} file - The file buffer from multer
- * @param {string} folder - The folder path in ImageKit (default: 'aghaz/products')
- * @returns {Promise<{fileId, url, name, size, fileType, height, width, filePath}>}
+ * Generate a clean public URL for an ImageKit file
+ * @param {string} filePath - The filePath from ImageKit upload response (e.g., "/aghaz/products/filename.jpg")
+ * @param {Object} transformations - Optional transformations { width, height, crop, etc. }
+ * @returns {string} Clean public URL without signed params
  */
+function getPublicUrl(filePath, transformations = {}) {
+  const ik = getImageKit();
+  const urlEndpoint = process.env.IMAGEKIT_URL_ENDPOINT;
+  
+  // Generate URL without any signed/expiry parameters
+  const urlOptions = {
+    src: filePath,
+    ...transformations,
+  };
+  let publicUrl = ik.url(urlOptions);
+  
+  // Ensure URL is always absolute (handle relative paths)
+  if (publicUrl && !publicUrl.startsWith('http')) {
+    publicUrl = urlEndpoint + (publicUrl.startsWith('/') ? '' : '/') + publicUrl;
+  }
+  
+  return publicUrl;
+}
+
 const uploadToImageKit = async (file, folder = 'aghaz/products') => {
   try {
     const fileName = `${Date.now()}-${file.originalname}`.replace(/\s+/g, '_');
     const base64 = file.buffer.toString('base64');
 
-    console.log('📤 Uploading to ImageKit:', { fileName, folder, size: file.size, mimetype: file.mimetype });
+    console.log('📤 Uploading:', { fileName, folder, size: file.size });
 
     const result = await getImageKit().upload({
       file: base64,
       fileName,
-      folder: folder,
+      folder,
     });
 
-    console.log('✅ ImageKit upload success:', { fileId: result.fileId, url: result.url });
+    console.log('✅ Uploaded. filePath:', result.filePath);
+
+    // Generate clean public URL (no ?updatedAt= or ?ik-s= params)
+    const publicUrl = getPublicUrl(result.filePath);
+
+    console.log('🔗 Public URL:', publicUrl);
 
     return {
       fileId: result.fileId,
-      url: result.url,
+      url: publicUrl, // Clean, permanent URL
       name: result.name,
       size: result.size,
       fileType: result.fileType,
@@ -62,28 +81,22 @@ const uploadToImageKit = async (file, folder = 'aghaz/products') => {
       filePath: result.filePath,
     };
   } catch (error) {
-    console.error('❌ ImageKit upload failed:', {
+    console.error('❌ ImageKit upload error:', {
       message: error.message,
       statusCode: error.statusCode,
-      hint: 'Check if your IMAGEKIT_PUBLIC_KEY and IMAGEKIT_PRIVATE_KEY are correct (without public_/private_ prefix)',
     });
     throw new Error(`ImageKit upload failed: ${error.message}`);
   }
 };
 
-/**
- * Delete a file from ImageKit by file ID
- * @param {string} fileId - The ImageKit file ID
- * @returns {Promise<{success: boolean}>}
- */
 const deleteFromImageKit = async (fileId) => {
   try {
-    console.log('🗑️ Deleting from ImageKit:', fileId);
+    console.log('🗑️ Deleting:', fileId);
     await getImageKit().deleteFile(fileId);
-    console.log('✅ ImageKit delete success:', fileId);
+    console.log('✅ Deleted:', fileId);
     return { success: true };
   } catch (error) {
-    console.error('❌ ImageKit delete failed:', error.message);
+    console.error('❌ ImageKit delete error:', error.message);
     throw new Error(`ImageKit delete failed: ${error.message}`);
   }
 };
@@ -91,4 +104,5 @@ const deleteFromImageKit = async (fileId) => {
 module.exports = {
   uploadToImageKit,
   deleteFromImageKit,
+  getPublicUrl, // Export for other modules if needed
 };
