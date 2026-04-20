@@ -1,17 +1,17 @@
 const multer = require('multer');
 const { uploadToImageKit, deleteFromImageKit } = require('../utils/imagekitUploader');
 const ApiResponse = require('../utils/apiResponse');
-const asyncHandler = require('../utils/asyncHandler');
-const { MAX_FILE_SIZE, ALLOWED_IMAGE_TYPES } = require('../config/constants');
+const { MAX_FILE_SIZE } = require('../config/constants');
 
 // Configure multer for memory storage
 const storage = multer.memoryStorage();
 
+// Accept any image MIME type
 const fileFilter = (req, file, cb) => {
-  if (ALLOWED_IMAGE_TYPES.includes(file.mimetype)) {
+  if (file.mimetype.startsWith('image/')) {
     cb(null, true);
   } else {
-    cb(new Error(`Invalid file type. Allowed types: ${ALLOWED_IMAGE_TYPES.join(', ')}`), false);
+    cb(new Error(`Invalid file type: ${file.mimetype}. Only images are allowed.`), false);
   }
 };
 
@@ -23,15 +23,14 @@ const upload = multer({
   fileFilter,
 });
 
-const uploadSingleImage = asyncHandler(async (req, res) => {
+const uploadSingleImage = (req, res) => {
   upload.single('image')(req, res, async (err) => {
-    if (err instanceof multer.MulterError) {
-      return res.status(400).json(
-        ApiResponse.error(`Upload error: ${err.message}`, 400)
-      );
-    }
-
     if (err) {
+      if (err instanceof multer.MulterError) {
+        return res.status(400).json(
+          ApiResponse.error(`Upload error: ${err.message}`, 400)
+        );
+      }
       return res.status(400).json(
         ApiResponse.error(err.message, 400)
       );
@@ -43,24 +42,36 @@ const uploadSingleImage = asyncHandler(async (req, res) => {
       );
     }
 
-    const folder = req.body.folder || 'aghaz/products';
-    const result = await uploadToImageKit(req.file, folder);
+    console.log('Processing upload for file:', {
+      originalname: req.file.originalname,
+      mimetype: req.file.mimetype,
+      size: req.file.size,
+    });
 
-    res.status(200).json(
-      ApiResponse.success('Image uploaded successfully', result)
-    );
-  });
-});
-
-const uploadMultipleImages = asyncHandler(async (req, res) => {
-  upload.array('images', 10)(req, res, async (err) => {
-    if (err instanceof multer.MulterError) {
-      return res.status(400).json(
-        ApiResponse.error(`Upload error: ${err.message}`, 400)
+    try {
+      const folder = req.body.folder || 'aghaz/products';
+      const result = await uploadToImageKit(req.file, folder);
+      res.status(200).json(
+        ApiResponse.success('Image uploaded successfully', result)
+      );
+    } catch (error) {
+      console.error('ImageKit upload error:', error);
+      const statusCode = error.response?.status || 500;
+      res.status(statusCode).json(
+        ApiResponse.error(error.message, statusCode)
       );
     }
+  });
+};
 
+const uploadMultipleImages = (req, res) => {
+  upload.array('images', 10)(req, res, async (err) => {
     if (err) {
+      if (err instanceof multer.MulterError) {
+        return res.status(400).json(
+          ApiResponse.error(`Upload error: ${err.message}`, 400)
+        );
+      }
       return res.status(400).json(
         ApiResponse.error(err.message, 400)
       );
@@ -72,21 +83,27 @@ const uploadMultipleImages = asyncHandler(async (req, res) => {
       );
     }
 
-    const folder = req.body.folder || 'aghaz/products';
-    const results = [];
-
-    for (const file of req.files) {
-      const result = await uploadToImageKit(file, folder);
-      results.push(result);
+    try {
+      const folder = req.body.folder || 'aghaz/products';
+      const results = [];
+      for (const file of req.files) {
+        const result = await uploadToImageKit(file, folder);
+        results.push(result);
+      }
+      res.status(200).json(
+        ApiResponse.success('Images uploaded successfully', results)
+      );
+    } catch (error) {
+      console.error('ImageKit bulk upload error:', error);
+      const statusCode = error.response?.status || 500;
+      res.status(statusCode).json(
+        ApiResponse.error(error.message, statusCode)
+      );
     }
-
-    res.status(200).json(
-      ApiResponse.success('Images uploaded successfully', results)
-    );
   });
-});
+};
 
-const deleteImage = asyncHandler(async (req, res) => {
+const deleteImage = async (req, res) => {
   const { fileId } = req.params;
 
   if (!fileId) {
@@ -95,12 +112,25 @@ const deleteImage = asyncHandler(async (req, res) => {
     );
   }
 
-  await deleteFromImageKit(fileId);
+  try {
+    await deleteFromImageKit(fileId);
+    res.status(200).json(
+      ApiResponse.success('Image deleted successfully')
+    );
+  } catch (error) {
+    console.error('ImageKit delete error:', error);
+    const statusCode = error.response?.status || 500;
+    res.status(statusCode).json(
+      ApiResponse.error(error.message, statusCode)
+    );
+  }
+};
 
-  res.status(200).json(
-    ApiResponse.success('Image deleted successfully')
-  );
-});
+module.exports = {
+  uploadSingleImage,
+  uploadMultipleImages,
+  deleteImage,
+};
 
 module.exports = {
   uploadSingleImage,

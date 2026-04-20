@@ -245,41 +245,41 @@ const getDashboardStats = asyncHandler(async (req, res) => {
     if (endDate) query.createdAt.$lte = new Date(endDate);
   }
 
-  const totalOrders = await Order.countDocuments(query);
-  const pendingOrders = await Order.countDocuments({ ...query, status: 'pending' });
-  const confirmedOrders = await Order.countDocuments({ ...query, status: 'confirmed' });
-
-  // Total revenue
-  const revenueResult = await Order.aggregate([
-    { $match: query },
-    { $group: { _id: null, total: { $sum: '$totalAmount' } } },
+  // Run all queries in parallel for better performance
+  const [
+    totalOrders,
+    pendingOrders,
+    confirmedOrders,
+    revenueResult,
+    statusAgg,
+    topProducts,
+    recentOrders
+  ] = await Promise.all([
+    Order.countDocuments(query),
+    Order.countDocuments({ ...query, status: 'pending' }),
+    Order.countDocuments({ ...query, status: 'confirmed' }),
+    Order.aggregate([
+      { $match: query },
+      { $group: { _id: null, total: { $sum: '$totalAmount' } } },
+    ]),
+    Order.aggregate([
+      { $match: query },
+      { $group: { _id: '$status', count: { $sum: 1 } } },
+    ]),
+    Product.find().sort({ sales: -1 }).limit(5).lean(),
+    Order.find(query).sort({ createdAt: -1 }).limit(10).lean(),
   ]);
+
   const totalRevenue = revenueResult.length > 0 ? revenueResult[0].total : 0;
 
-  // Orders by status
-  const statusAgg = await Order.aggregate([
-    { $match: query },
-    { $group: { _id: '$status', count: { $sum: 1 } } },
-  ]);
   const ordersByStatus = {};
   statusAgg.forEach(item => { ordersByStatus[item._id] = item.count; });
 
-  // Top products by sales
-  const topProducts = await Product.find(query)
-    .sort({ sales: -1 })
-    .limit(5)
-    .lean();
   const topProductsData = topProducts.map(p => ({
     title: p.title,
     sales: p.sales,
     revenue: p.sales * p.price,
   }));
-
-  // Recent orders
-  const recentOrders = await Order.find(query)
-    .sort({ createdAt: -1 })
-    .limit(10)
-    .lean();
 
   res.status(200).json(
     ApiResponse.success('Dashboard stats retrieved', {

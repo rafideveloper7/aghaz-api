@@ -115,6 +115,8 @@ const orderSchema = new mongoose.Schema(
 
 orderSchema.index({ createdAt: -1 });
 orderSchema.index({ status: 1 });
+orderSchema.index({ status: 1, createdAt: -1 });
+orderSchema.index({ customerName: 'text', phone: 'text', city: 'text' });
 
 const Order = mongoose.model('Order', orderSchema);
 

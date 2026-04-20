@@ -1,69 +1,89 @@
-const axios = require('axios');
+const ImageKit = require('imagekit');
 
-const uploadToImageKit = async (file, folder = 'aghaz') => {
-  const publicKey = process.env.IMAGEKIT_PUBLIC_KEY;
-  const privateKey = process.env.IMAGEKIT_PRIVATE_KEY;
-  const urlEndpoint = process.env.IMAGEKIT_URL_ENDPOINT;
+let imagekitInstance = null;
 
-  if (!publicKey || !privateKey || !urlEndpoint) {
-    throw new Error('ImageKit is not configured. Please set IMAGEKIT_PUBLIC_KEY, IMAGEKIT_PRIVATE_KEY, and IMAGEKIT_URL_ENDPOINT in your .env file.');
+function getImageKit() {
+  if (!imagekitInstance) {
+    const publicKeyRaw = process.env.IMAGEKIT_PUBLIC_KEY;
+    const privateKeyRaw = process.env.IMAGEKIT_PRIVATE_KEY;
+    const urlEndpoint = process.env.IMAGEKIT_URL_ENDPOINT;
+
+    if (!publicKeyRaw || !privateKeyRaw || !urlEndpoint) {
+      throw new Error('ImageKit not configured. Set IMAGEKIT_PUBLIC_KEY, IMAGEKIT_PRIVATE_KEY, IMAGEKIT_URL_ENDPOINT.');
+    }
+
+    // Strip 'public_' and 'private_' prefixes if present (ImageKit dashboard adds them for display)
+    const publicKey = publicKeyRaw.replace(/^public_/, '');
+    const privateKey = privateKeyRaw.replace(/^private_/, '');
+
+    console.log('🔧 ImageKit initialized:', {
+      urlEndpoint,
+      publicKeyPrefix: publicKey.substring(0, 8) + '...',
+    });
+
+    imagekitInstance = new ImageKit({
+      publicKey,
+      privateKey,
+      urlEndpoint,
+    });
   }
+  return imagekitInstance;
+}
 
+/**
+ * Upload a file buffer to ImageKit
+ * @param {Buffer} file - The file buffer from multer
+ * @param {string} folder - The folder path in ImageKit (default: 'aghaz/products')
+ * @returns {Promise<{fileId, url, name, size, fileType, height, width, filePath}>}
+ */
+const uploadToImageKit = async (file, folder = 'aghaz/products') => {
   try {
-    const fileName = `${Date.now()}-${file.originalname}`;
+    const fileName = `${Date.now()}-${file.originalname}`.replace(/\s+/g, '_');
     const base64 = file.buffer.toString('base64');
-    const mimeType = file.mimetype || 'image/jpeg';
-    
-    const auth = Buffer.from(`${privateKey}:`).toString('base64');
-    
-    const response = await axios.post(
-      'https://api.imagekit.io/v1/files/upload',
-      {
-        file: `data:${mimeType};base64,${base64}`,
-        fileName: fileName,
-        folder: folder,
-      },
-      {
-        headers: {
-          'Authorization': `Basic ${auth}`,
-          'Content-Type': 'application/x-www-form-urlencoded',
-        },
-      }
-    );
+
+    console.log('📤 Uploading to ImageKit:', { fileName, folder, size: file.size, mimetype: file.mimetype });
+
+    const result = await getImageKit().upload({
+      file: base64,
+      fileName,
+      folder: folder,
+    });
+
+    console.log('✅ ImageKit upload success:', { fileId: result.fileId, url: result.url });
 
     return {
-      fileId: response.data.fileId,
-      url: response.data.url,
-      name: response.data.name,
-      size: response.data.size,
-      fileType: response.data.fileType,
-      height: response.data.height,
-      width: response.data.width,
+      fileId: result.fileId,
+      url: result.url,
+      name: result.name,
+      size: result.size,
+      fileType: result.fileType,
+      height: result.height,
+      width: result.width,
+      filePath: result.filePath,
     };
   } catch (error) {
-    console.error('ImageKit upload error:', error.response?.data || error.message);
-    throw new Error(`ImageKit upload failed: ${error.response?.data?.message || error.message}`);
+    console.error('❌ ImageKit upload failed:', {
+      message: error.message,
+      statusCode: error.statusCode,
+      hint: 'Check if your IMAGEKIT_PUBLIC_KEY and IMAGEKIT_PRIVATE_KEY are correct (without public_/private_ prefix)',
+    });
+    throw new Error(`ImageKit upload failed: ${error.message}`);
   }
 };
 
+/**
+ * Delete a file from ImageKit by file ID
+ * @param {string} fileId - The ImageKit file ID
+ * @returns {Promise<{success: boolean}>}
+ */
 const deleteFromImageKit = async (fileId) => {
-  const privateKey = process.env.IMAGEKIT_PRIVATE_KEY;
-  
-  if (!privateKey) {
-    throw new Error('ImageKit is not configured.');
-  }
-
   try {
-    const auth = Buffer.from(`${privateKey}:`).toString('base64');
-    
-    await axios.delete(`https://api.imagekit.io/v1/files/${fileId}`, {
-      headers: {
-        'Authorization': `Basic ${auth}`,
-      },
-    });
-    
+    console.log('🗑️ Deleting from ImageKit:', fileId);
+    await getImageKit().deleteFile(fileId);
+    console.log('✅ ImageKit delete success:', fileId);
     return { success: true };
   } catch (error) {
+    console.error('❌ ImageKit delete failed:', error.message);
     throw new Error(`ImageKit delete failed: ${error.message}`);
   }
 };

@@ -54,7 +54,8 @@ const connectDatabase = async () => {
       connectTimeoutMS: 10000,
       serverSelectionTimeoutMS: 15000,
       socketTimeoutMS: 45000,
-      maxPoolSize: 5,
+      maxPoolSize: 20,
+      minPoolSize: 2,
       family: 4,
     };
 
