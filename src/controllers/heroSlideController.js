@@ -5,12 +5,18 @@ const asyncHandler = require('../utils/asyncHandler');
 
 const createHeroSlideValidation = [
   body('title').notEmpty().withMessage('Title is required').trim(),
-  body('image').notEmpty().withMessage('Image URL is required').trim(),
+  body('mediaUrl').optional().trim(),
+  body('image').optional().trim(),
+  body('mediaType').optional().isIn(['image', 'video', 'gif']),
+  body('rightSideMediaType').optional().isIn(['image', 'video', 'gif', 'card', 'none']),
 ];
 
 const updateHeroSlideValidation = [
   body('title').optional().notEmpty().withMessage('Title cannot be empty').trim(),
-  body('image').optional().notEmpty().withMessage('Image URL cannot be empty').trim(),
+  body('mediaUrl').optional().trim(),
+  body('image').optional().trim(),
+  body('mediaType').optional().isIn(['image', 'video', 'gif']),
+  body('rightSideMediaType').optional().isIn(['image', 'video', 'gif', 'card', 'none']),
 ];
 
 const getHeroSlides = asyncHandler(async (req, res) => {

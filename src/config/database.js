@@ -45,10 +45,14 @@ const connectDatabase = async () => {
   }
 
   if (!globalCache.promise) {
+    // Set custom DNS servers globally before connecting
+    const dns = require('dns');
+    dns.setServers(['8.8.8.8', '1.1.1.1']); 
+
     const options = {
       bufferCommands: false,
       connectTimeoutMS: 10000,
-      serverSelectionTimeoutMS: 10000,
+      serverSelectionTimeoutMS: 15000,
       socketTimeoutMS: 45000,
       maxPoolSize: 5,
       family: 4,

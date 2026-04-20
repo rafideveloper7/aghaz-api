@@ -21,10 +21,20 @@ const heroSlideSchema = new mongoose.Schema(
       type: String,
       default: '/shop',
     },
-    // Images
+    // Media (supports images, videos, gifs)
+    mediaType: {
+      type: String,
+      enum: ['image', 'video', 'gif'],
+      default: 'image',
+    },
+    mediaUrl: {
+      type: String,
+      default: '',
+    },
+    // Legacy image support
     image: {
       type: String,
-      required: [true, 'Slide image is required'],
+      default: '',
     },
     mobileBg: {
       type: String,
@@ -33,6 +43,50 @@ const heroSlideSchema = new mongoose.Schema(
     desktopBg: {
       type: String,
       default: '',
+    },
+    // Right side hero content
+    rightSideMediaType: {
+      type: String,
+      enum: ['image', 'video', 'gif', 'card', 'none'],
+      default: 'image',
+    },
+    rightSideMediaUrl: {
+      type: String,
+      default: '',
+    },
+    rightSideCardTitle: {
+      type: String,
+      default: '',
+    },
+    rightSideCardSubtitle: {
+      type: String,
+      default: '',
+    },
+    // Custom text styling
+    titleColor: {
+      type: String,
+      default: '#ffffff',
+    },
+    subtitleColor: {
+      type: String,
+      default: '#ffffffc4',
+    },
+    titleFontSize: {
+      type: Number,
+      default: 64,
+    },
+    subtitleFontSize: {
+      type: Number,
+      default: 18,
+    },
+    // Hero height control
+    heroHeight: {
+      type: Number,
+      default: 720,
+    },
+    mobileHeroHeight: {
+      type: Number,
+      default: 560,
     },
     // Mobile-specific content
     mobileTitle: {
