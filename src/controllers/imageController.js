@@ -1,30 +1,28 @@
 const asyncHandler = require('../utils/asyncHandler');
 const ApiResponse = require('../utils/apiResponse');
-const { getImageKit } = require('../config/imagekit');
+const { getCloudinary } = require('../utils/cloudinaryUploader');
 const Product = require('../models/Product');
 const Category = require('../models/Category');
 const HeroSlide = require('../models/HeroSlide');
 
-// @desc    Get all images from ImageKit with usage status
+// @desc    Get all images from Cloudinary with usage status
 // @route   GET /api/images
 // @access  Private/Admin
 const getImages = asyncHandler(async (req, res) => {
-  const imagekit = getImageKit();
-  if (!imagekit) {
-    return res.status(500).json(ApiResponse.error('ImageKit is not configured'));
-  }
-
+  const cloudinary = getCloudinary();
+  
   const { folder = 'aghaz', page = 1, limit = 20, usage = 'all' } = req.query;
 
   try {
-    const response = await imagekit.listFiles({
-      path: String(folder),
-      type: 'file',
-      limit: Number(limit),
-      offset: (Number(page) - 1) * Number(limit),
+    const response = await cloudinary.api.resources({
+      type: 'upload',
+      prefix: folder,
+      resource_type: 'image',
+      max_results: Number(limit),
+      next_cursor: (Number(page) > 1) ? String(page) : undefined,
     });
 
-    const files = response.result?.files || [];
+    const files = response.resources || [];
 
     // Get all used image URLs from database
     const usedImages = new Set();
@@ -49,13 +47,11 @@ const getImages = asyncHandler(async (req, res) => {
       if (slide.mobileBg) usedImages.add(slide.mobileBg);
     });
 
-    // Collect product images (there might be more in other models)
-    // Add more models here if needed
-
     // Mark usage status
     const filesWithUsage = files.map((file) => ({
       ...file,
-      isUsed: usedImages.has(file.url),
+      url: file.secure_url,
+      isUsed: usedImages.has(file.secure_url),
     }));
 
     // Filter by usage if requested
@@ -72,7 +68,7 @@ const getImages = asyncHandler(async (req, res) => {
         pagination: {
           page: Number(page),
           limit: Number(limit),
-          total: usage === 'all' ? response.result?.totalCount || 0 : filteredFiles.length,
+          total: response.total_count || filteredFiles.length,
         },
       })
     );
@@ -81,23 +77,20 @@ const getImages = asyncHandler(async (req, res) => {
   }
 });
 
-// @desc    Get ImageKit storage stats
+// @desc    Get Cloudinary storage stats
 // @route   GET /api/images/stats
 // @access  Private/Admin
 const getImageStats = asyncHandler(async (req, res) => {
-  const imagekit = getImageKit();
-  if (!imagekit) {
-    return res.status(500).json(ApiResponse.error('ImageKit is not configured'));
-  }
+  const cloudinary = getCloudinary();
 
   try {
-    // Get all files from all folders
-    const allFiles = await imagekit.listFiles({
-      type: 'file',
-      limit: 500, // Max allowed
+    const response = await cloudinary.api.resources({
+      type: 'upload',
+      resource_type: 'image',
+      max_results: 500,
     });
 
-    const files = allFiles.result?.files || [];
+    const files = response.resources || [];
 
     // Get all used image URLs from database
     const usedImages = new Set();
@@ -121,21 +114,21 @@ const getImageStats = asyncHandler(async (req, res) => {
 
     // Calculate stats
     const totalImages = files.length;
-    const usedImagesCount = files.filter((f) => usedImages.has(f.url)).length;
+    const usedImagesCount = files.filter((f) => usedImages.has(f.secure_url)).length;
     const unusedImagesCount = totalImages - usedImagesCount;
-    const totalSize = files.reduce((sum, f) => sum + (f.size || 0), 0);
-    const usedSize = files.filter((f) => usedImages.has(f.url)).reduce((sum, f) => sum + (f.size || 0), 0);
+    const totalSize = files.reduce((sum, f) => sum + (f.bytes || 0), 0);
+    const usedSize = files.filter((f) => usedImages.has(f.secure_url)).reduce((sum, f) => sum + (f.bytes || 0), 0);
     const unusedSize = totalSize - usedSize;
 
     // By folder
     const folderStats = {};
     files.forEach((file) => {
-      const folderPath = file.filePath?.split('/').slice(0, -1).join('/') || 'root';
+      const folderPath = file.folder || 'root';
       if (!folderStats[folderPath]) {
         folderStats[folderPath] = { count: 0, size: 0 };
       }
       folderStats[folderPath].count++;
-      folderStats[folderPath].size += file.size || 0;
+      folderStats[folderPath].size += file.bytes || 0;
     });
 
     res.status(200).json(
@@ -154,8 +147,8 @@ const getImageStats = asyncHandler(async (req, res) => {
   }
 });
 
-// @desc    Delete image from ImageKit
-// @route   DELETE /api/images/:fileId
+// @desc    Delete image from Cloudinary
+// @route   DELETE /api/images/:publicId
 // @access  Private/Admin
 const deleteImage = asyncHandler(async (req, res) => {
   const { fileId } = req.params;
@@ -164,13 +157,9 @@ const deleteImage = asyncHandler(async (req, res) => {
     return res.status(400).json(ApiResponse.error('File ID is required'));
   }
 
-  const imagekit = getImageKit();
-  if (!imagekit) {
-    return res.status(500).json(ApiResponse.error('ImageKit is not configured'));
-  }
-
   try {
-    await imagekit.deleteFile(fileId);
+    const cloudinary = getCloudinary();
+    await cloudinary.uploader.destroy(fileId);
     res.status(200).json(ApiResponse.success('Image deleted successfully'));
   } catch (error) {
     res.status(500).json(ApiResponse.error(`Failed to delete image: ${error.message}`));
@@ -187,14 +176,18 @@ const bulkDeleteImages = asyncHandler(async (req, res) => {
     return res.status(400).json(ApiResponse.error('File IDs array is required'));
   }
 
-  const imagekit = getImageKit();
-  if (!imagekit) {
-    return res.status(500).json(ApiResponse.error('ImageKit is not configured'));
-  }
-
   try {
-    const result = await imagekit.bulkDeleteFiles(fileIds);
-    res.status(200).json(ApiResponse.success('Images deleted successfully', result));
+    const results = [];
+    const cloudinary = getCloudinary();
+    for (const publicId of fileIds) {
+      try {
+        await cloudinary.uploader.destroy(publicId);
+        results.push({ publicId, success: true });
+      } catch (e) {
+        results.push({ publicId, success: false, error: e.message });
+      }
+    }
+    res.status(200).json(ApiResponse.success('Images deleted', results));
   } catch (error) {
     res.status(500).json(ApiResponse.error(`Failed to delete images: ${error.message}`));
   }

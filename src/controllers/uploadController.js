@@ -1,17 +1,17 @@
 const multer = require('multer');
-const { uploadToImageKit, deleteFromImageKit } = require('../utils/imagekitUploader');
+const { uploadToCloudinary, deleteFromCloudinary } = require('../utils/cloudinaryUploader');
 const ApiResponse = require('../utils/apiResponse');
 const { MAX_FILE_SIZE } = require('../config/constants');
 
 // Configure multer for memory storage
 const storage = multer.memoryStorage();
 
-// Accept any image MIME type
+// Accept images and videos
 const fileFilter = (req, file, cb) => {
-  if (file.mimetype.startsWith('image/')) {
+  if (file.mimetype.startsWith('image/') || file.mimetype.startsWith('video/')) {
     cb(null, true);
   } else {
-    cb(new Error(`Invalid file type: ${file.mimetype}. Only images are allowed.`), false);
+    cb(new Error(`Invalid file type: ${file.mimetype}. Only images and videos are allowed.`), false);
   }
 };
 
@@ -50,12 +50,12 @@ const uploadSingleImage = (req, res) => {
 
     try {
       const folder = req.body.folder || 'aghaz/products';
-      const result = await uploadToImageKit(req.file, folder);
+      const result = await uploadToCloudinary(req.file, folder);
       res.status(200).json(
         ApiResponse.success('Image uploaded successfully', result)
       );
     } catch (error) {
-      console.error('ImageKit upload error:', error);
+      console.error('Cloudinary upload error:', error);
       const statusCode = error.response?.status || 500;
       res.status(statusCode).json(
         ApiResponse.error(error.message, statusCode)
@@ -87,14 +87,14 @@ const uploadMultipleImages = (req, res) => {
       const folder = req.body.folder || 'aghaz/products';
       const results = [];
       for (const file of req.files) {
-        const result = await uploadToImageKit(file, folder);
+        const result = await uploadToCloudinary(file, folder);
         results.push(result);
       }
       res.status(200).json(
         ApiResponse.success('Images uploaded successfully', results)
       );
     } catch (error) {
-      console.error('ImageKit bulk upload error:', error);
+      console.error('Cloudinary bulk upload error:', error);
       const statusCode = error.response?.status || 500;
       res.status(statusCode).json(
         ApiResponse.error(error.message, statusCode)
@@ -113,12 +113,12 @@ const deleteImage = async (req, res) => {
   }
 
   try {
-    await deleteFromImageKit(fileId);
+    await deleteFromCloudinary(fileId);
     res.status(200).json(
       ApiResponse.success('Image deleted successfully')
     );
   } catch (error) {
-    console.error('ImageKit delete error:', error);
+    console.error('Cloudinary delete error:', error);
     const statusCode = error.response?.status || 500;
     res.status(statusCode).json(
       ApiResponse.error(error.message, statusCode)

@@ -7,7 +7,7 @@ Express.js REST API for the Aghaz dropshipping ecommerce platform.
 - **Node.js** + **Express**
 - **MongoDB** + **Mongoose**
 - **JWT** authentication
-- **ImageKit** for image storage
+- **Cloudinary** for media storage
 - **bcrypt** for password hashing
 - **express-validator** for input validation
 
@@ -28,9 +28,9 @@ Edit `.env` with your credentials:
 PORT=5000
 MONGODB_URI=mongodb://localhost:27017/aghaz
 JWT_SECRET=your-super-secret-jwt-key-change-this-in-production
-IMAGEKIT_PUBLIC_KEY=your-imagekit-public-key
-IMAGEKIT_PRIVATE_KEY=your-imagekit-private-key
-IMAGEKIT_URL_ENDPOINT=https://ik.imagekit.io/your-id
+CLOUDINARY_CLOUD_NAME=your_cloud_name
+CLOUDINARY_API_KEY=your_api_key
+CLOUDINARY_API_SECRET=your_api_secret
 FRONTEND_URL=http://localhost:3000
 ADMIN_URL=http://localhost:3001
 ```

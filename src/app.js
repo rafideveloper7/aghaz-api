@@ -35,12 +35,12 @@ app.use(helmet({
   contentSecurityPolicy: {
     directives: {
       defaultSrc: ["'self'"],
-      imgSrc: ["'self'", "data:", "blob:", "https://*.imagekit.io", "https://*"],
-      mediaSrc: ["'self'", "blob:", "https://*.imagekit.io", "https://*"],
+      imgSrc: ["'self'", "data:", "blob:", "https://*.cloudinary.com", "https://*"],
+      mediaSrc: ["'self'", "blob:", "https://*.cloudinary.com", "https://*"],
       scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"],
       styleSrc: ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
       fontSrc: ["'self'", "https://fonts.gstatic.com"],
-      connectSrc: ["'self'", "https://*.imagekit.io"],
+      connectSrc: ["'self'", "https://*.cloudinary.com"],
     },
   },
   crossOriginResourcePolicy: { policy: "cross-origin" },
