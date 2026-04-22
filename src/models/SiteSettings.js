@@ -100,15 +100,38 @@ const siteSettingsSchema = new mongoose.Schema(
          },
        ],
      },
-     reviewsEnabled: {
-       type: Boolean,
-       default: true,
-     },
-     reviewsRequireApproval: {
-       type: Boolean,
-       default: true,
-     },
-   },
+reviewsEnabled: {
+      type: Boolean,
+      default: true,
+    },
+    reviewsRequireApproval: {
+      type: Boolean,
+      default: true,
+    },
+    // Page hero customizations
+    newArrivalsHero: {
+      title: { type: String, default: 'New Arrivals' },
+      subtitle: { type: String, default: 'Be the first to discover our latest collection' },
+      bgColor: { type: String, default: '#7c3aed' },
+      bgGradient: { type: String, default: 'from-violet-600 via-purple-600 to-fuchsia-600' },
+      image: { type: String, default: '' },
+    },
+    dealsHero: {
+      title: { type: String, default: 'Flash Deals' },
+      subtitle: { type: String, default: 'Grab these amazing deals before they are gone!' },
+      bgColor: { type: String, default: '#ea580c' },
+      bgGradient: { type: String, default: 'from-red-600 via-orange-500 to-yellow-500' },
+      image: { type: String, default: '' },
+      timerEndTime: { type: String, default: '' },
+    },
+    aboutHero: {
+      title: { type: String, default: 'About Aghaz' },
+      subtitle: { type: String, default: 'Your trusted destination for premium smart gadgets' },
+      bgColor: { type: String, default: '#111827' },
+      bgGradient: { type: String, default: 'from-gray-900 via-gray-800 to-emerald-900' },
+      image: { type: String, default: '' },
+    },
+  },
    {
      timestamps: true,
    }

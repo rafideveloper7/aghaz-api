@@ -18,6 +18,7 @@ const createOrderValidation = [
   body('totalAmount').isFloat({ min: 0 }).withMessage('Total amount must be a positive number'),
   body('paymentMethodCode').notEmpty().withMessage('Payment method is required').trim(),
   body('paymentReference').optional().trim(),
+  body('paymentProofUrl').optional().trim(),
 ];
 
 const updateOrderStatusValidation = [
@@ -28,7 +29,7 @@ const updateOrderStatusValidation = [
 ];
 
 const createOrder = asyncHandler(async (req, res) => {
-  const { products, paymentMethodCode, paymentReference } = req.body;
+  const { products, paymentMethodCode, paymentReference, paymentProofUrl } = req.body;
   const settings = await SiteSettings.findOne().lean();
   const paymentMethods = settings?.paymentMethods || [];
   const selectedPaymentMethod =
@@ -98,6 +99,7 @@ const createOrder = asyncHandler(async (req, res) => {
       accountNumber: selectedPaymentMethod.accountNumber || '',
       iban: selectedPaymentMethod.iban || '',
       paymentReference: paymentReference || '',
+      paymentProofUrl: paymentProofUrl || '',
     },
     paymentStatus: selectedPaymentMethod.type === 'cod' ? 'unpaid' : 'awaiting_verification',
     notes: req.body.notes || '',

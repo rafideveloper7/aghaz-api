@@ -91,6 +91,11 @@ const orderSchema = new mongoose.Schema(
         default: '',
         trim: true,
       },
+      paymentProofUrl: {
+        type: String,
+        default: '',
+        trim: true,
+      },
     },
     paymentStatus: {
       type: String,
