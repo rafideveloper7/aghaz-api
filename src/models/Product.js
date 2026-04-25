@@ -57,6 +57,22 @@ const productSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    isHot: {
+      type: Boolean,
+      default: false,
+    },
+    isDeal: {
+      type: Boolean,
+      default: false,
+    },
+    isOffer: {
+      type: Boolean,
+      default: false,
+    },
+    isNewArrival: {
+      type: Boolean,
+      default: false,
+    },
     sortOrder: {
       type: Number,
       default: 0,

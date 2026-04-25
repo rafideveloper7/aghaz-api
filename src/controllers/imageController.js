@@ -4,6 +4,7 @@ const { getCloudinary } = require('../utils/cloudinaryUploader');
 const Product = require('../models/Product');
 const Category = require('../models/Category');
 const HeroSlide = require('../models/HeroSlide');
+const SiteSettings = require('../models/SiteSettings');
 
 // @desc    Get all images from Cloudinary with usage status
 // @route   GET /api/images
@@ -40,11 +41,42 @@ const getImages = asyncHandler(async (req, res) => {
     });
 
     // Collect hero slide images
-    const heroSlides = await HeroSlide.find({}, 'image desktopBg mobileBg');
+    const heroSlides = await HeroSlide.find({}, 'image desktopBg mobileBg mediaUrl rightSideMediaUrl');
     heroSlides.forEach((slide) => {
       if (slide.image) usedImages.add(slide.image);
       if (slide.desktopBg) usedImages.add(slide.desktopBg);
       if (slide.mobileBg) usedImages.add(slide.mobileBg);
+      if (slide.mediaUrl) usedImages.add(slide.mediaUrl);
+      if (slide.rightSideMediaUrl) usedImages.add(slide.rightSideMediaUrl);
+    });
+
+    // Collect site settings images (logos, hero backgrounds, etc.)
+    const siteSettings = await SiteSettings.find({});
+    siteSettings.forEach((settings) => {
+      if (settings.logo) usedImages.add(settings.logo);
+      if (settings.newArrivalsHero) {
+        if (settings.newArrivalsHero.bgImage) usedImages.add(settings.newArrivalsHero.bgImage);
+        if (settings.newArrivalsHero.image) usedImages.add(settings.newArrivalsHero.image);
+        if (settings.newArrivalsHero.rightSideImage) usedImages.add(settings.newArrivalsHero.rightSideImage);
+      }
+      if (settings.dealsHero) {
+        if (settings.dealsHero.bgImage) usedImages.add(settings.dealsHero.bgImage);
+        if (settings.dealsHero.image) usedImages.add(settings.dealsHero.image);
+        if (settings.dealsHero.rightSideImage) usedImages.add(settings.dealsHero.rightSideImage);
+      }
+      if (settings.aboutHero) {
+        if (settings.aboutHero.bgImage) usedImages.add(settings.aboutHero.bgImage);
+        if (settings.aboutHero.image) usedImages.add(settings.aboutHero.image);
+        if (settings.aboutHero.rightSideImage) usedImages.add(settings.aboutHero.rightSideImage);
+      }
+      if (settings.shopHero) {
+        if (settings.shopHero.bgImage) usedImages.add(settings.shopHero.bgImage);
+        if (settings.shopHero.image) usedImages.add(settings.shopHero.image);
+        if (settings.shopHero.rightSideImage) usedImages.add(settings.shopHero.rightSideImage);
+      }
+      if (settings.homeHero) {
+        if (settings.homeHero.bgImage) usedImages.add(settings.homeHero.bgImage);
+      }
     });
 
     // Mark usage status
@@ -105,11 +137,42 @@ const getImageStats = asyncHandler(async (req, res) => {
       if (category.image) usedImages.add(category.image);
     });
 
-    const heroSlides = await HeroSlide.find({}, 'image desktopBg mobileBg');
+    const heroSlides = await HeroSlide.find({}, 'image desktopBg mobileBg mediaUrl rightSideMediaUrl');
     heroSlides.forEach((slide) => {
       if (slide.image) usedImages.add(slide.image);
       if (slide.desktopBg) usedImages.add(slide.desktopBg);
       if (slide.mobileBg) usedImages.add(slide.mobileBg);
+      if (slide.mediaUrl) usedImages.add(slide.mediaUrl);
+      if (slide.rightSideMediaUrl) usedImages.add(slide.rightSideMediaUrl);
+    });
+
+    // Collect site settings images (logos, hero backgrounds, etc.)
+    const siteSettings = await SiteSettings.find({});
+    siteSettings.forEach((settings) => {
+      if (settings.logo) usedImages.add(settings.logo);
+      if (settings.newArrivalsHero) {
+        if (settings.newArrivalsHero.bgImage) usedImages.add(settings.newArrivalsHero.bgImage);
+        if (settings.newArrivalsHero.image) usedImages.add(settings.newArrivalsHero.image);
+        if (settings.newArrivalsHero.rightSideImage) usedImages.add(settings.newArrivalsHero.rightSideImage);
+      }
+      if (settings.dealsHero) {
+        if (settings.dealsHero.bgImage) usedImages.add(settings.dealsHero.bgImage);
+        if (settings.dealsHero.image) usedImages.add(settings.dealsHero.image);
+        if (settings.dealsHero.rightSideImage) usedImages.add(settings.dealsHero.rightSideImage);
+      }
+      if (settings.aboutHero) {
+        if (settings.aboutHero.bgImage) usedImages.add(settings.aboutHero.bgImage);
+        if (settings.aboutHero.image) usedImages.add(settings.aboutHero.image);
+        if (settings.aboutHero.rightSideImage) usedImages.add(settings.aboutHero.rightSideImage);
+      }
+      if (settings.shopHero) {
+        if (settings.shopHero.bgImage) usedImages.add(settings.shopHero.bgImage);
+        if (settings.shopHero.image) usedImages.add(settings.shopHero.image);
+        if (settings.shopHero.rightSideImage) usedImages.add(settings.shopHero.rightSideImage);
+      }
+      if (settings.homeHero) {
+        if (settings.homeHero.bgImage) usedImages.add(settings.homeHero.bgImage);
+      }
     });
 
     // Calculate stats

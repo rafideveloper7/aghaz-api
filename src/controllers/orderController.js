@@ -79,8 +79,8 @@ const createOrder = asyncHandler(async (req, res) => {
     });
   }
 
-  const deliveryFee = calculatedTotal >= 2000 ? 0 : 150;
-  const verifiedTotal = calculatedTotal + deliveryFee;
+
+  const verifiedTotal = calculatedTotal;
 
   const order = await Order.create({
     customerName: req.body.customerName,

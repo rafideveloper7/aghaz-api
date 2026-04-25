@@ -27,6 +27,7 @@ const footerSocialRoutes = require('./routes/footerSocial.routes');
 const contactMessageRoutes = require('./routes/contactMessage.routes');
 const reviewRoutes = require('./routes/review.routes');
 const imageRoutes = require('./routes/image.routes');
+const blogRoutes = require('./routes/blog.routes');
 
 const app = express();
 
@@ -109,7 +110,10 @@ app.get('/', (req, res) => {
       announcement: '/api/announcement',
       settings: '/api/settings',
       footerSocial: '/api/footer-social',
-      contactMessages: '/api/contact-messages'
+      contactMessages: '/api/contact-messages',
+      reviews: '/api/reviews',
+      images: '/api/images',
+      blogs: '/api/blogs',
     },
     health: '/health'
   });
@@ -128,6 +132,7 @@ app.use('/api/footer-social', footerSocialRoutes);
 app.use('/api/contact-messages', contactMessageRoutes);
 app.use('/api/reviews', reviewRoutes);
 app.use('/api/images', imageRoutes);
+app.use('/api/blogs', blogRoutes);
 
 // 404 handler - for undefined routes
 app.use((req, res) => {

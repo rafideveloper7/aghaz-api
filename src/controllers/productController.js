@@ -39,6 +39,12 @@ const getProducts = asyncHandler(async (req, res) => {
     page = 1,
     limit = 10,
     featured,
+    isFeatured,
+    isHot,
+    isDeal,
+    isOffer,
+    isNewArrival,
+    onSale,
     status,
   } = req.query;
 
@@ -84,8 +90,29 @@ const getProducts = asyncHandler(async (req, res) => {
     ];
   }
 
-  if (featured === 'true') {
+  if (featured === 'true' || isFeatured === 'true') {
     query.isFeatured = true;
+  }
+
+  if (isHot === 'true') {
+    query.isHot = true;
+  }
+
+  if (isDeal === 'true') {
+    query.isDeal = true;
+  }
+
+  if (isOffer === 'true') {
+    query.isOffer = true;
+  }
+
+  if (isNewArrival === 'true') {
+    query.isNewArrival = true;
+  }
+
+  // onSale filter - products with comparePrice set and less than price
+  if (onSale === 'true') {
+    query.comparePrice = { $gt: 0 };
   }
 
   const sortOption = SORT_OPTIONS[sort.toUpperCase()] || SORT_OPTIONS.NEWEST;
