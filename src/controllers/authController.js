@@ -1,7 +1,9 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 
-// Simple Login - Direct Email + Plain Password Comparison
+// ======================
+//  SIMPLE DIRECT LOGIN
+// ======================
 const login = async (req, res) => {
   try {
     const { email, password } = req.body;
@@ -13,17 +15,17 @@ const login = async (req, res) => {
       });
     }
 
-    // Find user (admin)
-    const user = await User.findOne({ email }).select('+password'); // +password to get it
+    // Find admin user
+    const user = await User.findOne({ email }).select('+password');
 
-    if (!user) {
+    if (!user || user.role !== 'admin') {
       return res.status(401).json({
         success: false,
         message: 'Invalid credentials',
       });
     }
 
-    // DIRECT plain text comparison (no bcrypt, no salt)
+    // DIRECT plain text password comparison (no salt, no hash)
     if (user.password !== password) {
       return res.status(401).json({
         success: false,
@@ -31,14 +33,13 @@ const login = async (req, res) => {
       });
     }
 
-    // Generate token (simple JWT)
+    // Generate JWT token
     const token = jwt.sign(
-      { id: user._id },
+      { id: user._id, role: user.role },
       process.env.JWT_SECRET,
-      { expiresIn: '30d' }   // You can change duration
+      { expiresIn: '30d' }
     );
 
-    // Send response (exclude password)
     res.status(200).json({
       success: true,
       token,
@@ -50,15 +51,17 @@ const login = async (req, res) => {
       },
     });
   } catch (error) {
-    console.error(error);
+    console.error('Login error:', error);
     res.status(500).json({
       success: false,
-      message: 'Server error',
+      message: 'Server error during login',
     });
   }
 };
 
-// Keep your existing middleware functions
+// ======================
+//  Keep your existing middleware
+// ======================
 const protect = async (req, res, next) => {
   try {
     let token;
@@ -109,4 +112,32 @@ const adminOnly = (req, res, next) => {
   }
 };
 
-module.exports = { login, protect, adminOnly };
+// ======================
+//  Stub the other functions your route expects
+// ======================
+const loginValidation = (req, res, next) => next(); // placeholder
+const setupAdminValidation = (req, res, next) => next();
+
+const setupAdmin = async (req, res) => {
+  return res.status(400).json({
+    success: false,
+    message: 'Setup admin is disabled. Use your existing admin in DB.',
+  });
+};
+
+const seedDatabase = async (req, res) => {
+  return res.status(400).json({
+    success: false,
+    message: 'Seeding disabled in this simplified version.',
+  });
+};
+
+module.exports = { 
+  login, 
+  loginValidation, 
+  setupAdmin, 
+  setupAdminValidation, 
+  seedDatabase,
+  protect, 
+  adminOnly 
+};
