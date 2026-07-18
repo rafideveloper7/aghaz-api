@@ -1,117 +1,112 @@
 const jwt = require('jsonwebtoken');
-const { body } = require('express-validator');
 const User = require('../models/User');
-const ApiResponse = require('../utils/apiResponse');
-const asyncHandler = require('../utils/asyncHandler');
 
-const generateToken = (id) => {
-  return jwt.sign({ id }, process.env.JWT_SECRET, {
-    expiresIn: '7d',
-  });
-};
+// Simple Login - Direct Email + Plain Password Comparison
+const login = async (req, res) => {
+  try {
+    const { email, password } = req.body;
 
-const loginValidation = [
-  body('email')
-    .isEmail()
-    .withMessage('Please provide a valid email')
-    .notEmpty()
-    .withMessage('Email is required'),
-  body('password')
-    .notEmpty()
-    .withMessage('Password is required')
-    .isLength({ min: 6 })
-    .withMessage('Password must be at least 6 characters'),
-];
+    if (!email || !password) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide email and password',
+      });
+    }
 
-const login = asyncHandler(async (req, res) => {
-  const { email, password } = req.body;
+    // Find user (admin)
+    const user = await User.findOne({ email }).select('+password'); // +password to get it
 
-  const user = await User.findOne({ email });
+    if (!user) {
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid credentials',
+      });
+    }
 
-  if (!user) {
-    return res.status(401).json(
-      ApiResponse.error('Invalid email or password', 401)
+    // DIRECT plain text comparison (no bcrypt, no salt)
+    if (user.password !== password) {
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid credentials',
+      });
+    }
+
+    // Generate token (simple JWT)
+    const token = jwt.sign(
+      { id: user._id },
+      process.env.JWT_SECRET,
+      { expiresIn: '30d' }   // You can change duration
     );
-  }
 
-  const isMatch = await user.comparePassword(password);
-
-  if (!isMatch) {
-    return res.status(401).json(
-      ApiResponse.error('Invalid email or password', 401)
-    );
-  }
-
-  const token = generateToken(user._id);
-
-  res.status(200).json(
-    ApiResponse.success('Login successful', {
+    // Send response (exclude password)
+    res.status(200).json({
+      success: true,
       token,
       user: {
         id: user._id,
+        name: user.name,
         email: user.email,
         role: user.role,
       },
-    })
-  );
-});
-
-// Validation for admin setup
-const setupAdminValidation = [
-  body('email')
-    .isEmail()
-    .withMessage('Please provide a valid email')
-    .notEmpty()
-    .withMessage('Email is required'),
-  body('password')
-    .notEmpty()
-    .withMessage('Password is required')
-    .isLength({ min: 6 })
-    .withMessage('Password must be at least 6 characters'),
-];
-
-// Create initial admin user (only if none exists)
-const setupAdmin = asyncHandler(async (req, res) => {
-  const { email, password } = req.body;
-
-  // Check if any admin already exists
-  const existingAdmin = await User.findOne({ role: 'admin' });
-  if (existingAdmin) {
-    return res.status(400).json(
-      ApiResponse.error('Admin user already exists. Use the login endpoint.', 400)
-    );
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      success: false,
+      message: 'Server error',
+    });
   }
-
-  const user = await User.create({
-    email: email.toLowerCase(),
-    password,
-    role: 'admin',
-  });
-
-  res.status(201).json(
-    ApiResponse.success('Admin user created successfully', {
-      id: user._id,
-      email: user.email,
-      role: user.role,
-    })
-  );
-});
-
-module.exports = {
-  login,
-  loginValidation,
-  setupAdmin,
-  setupAdminValidation,
-  seedDatabase: async (req, res) => {
-    if (process.env.NODE_ENV === 'production') {
-      return res.status(403).json(ApiResponse.error('Seed is disabled in production', 403));
-    }
-    try {
-      const { run } = require('../scripts/seed');
-      const result = await run();
-      res.status(200).json(ApiResponse.success('Database seeded successfully', result));
-    } catch (err) {
-      res.status(500).json(ApiResponse.error('Seeding failed: ' + err.message, 500));
-    }
-  },
 };
+
+// Keep your existing middleware functions
+const protect = async (req, res, next) => {
+  try {
+    let token;
+    if (
+      req.headers.authorization &&
+      req.headers.authorization.startsWith('Bearer')
+    ) {
+      token = req.headers.authorization.split(' ')[1];
+    }
+
+    if (!token) {
+      return res.status(401).json({
+        success: false,
+        message: 'Not authorized to access this route. Please login.',
+      });
+    }
+
+    try {
+      const decoded = jwt.verify(token, process.env.JWT_SECRET);
+      req.user = await User.findById(decoded.id).select('-password');
+
+      if (!req.user) {
+        return res.status(401).json({
+          success: false,
+          message: 'User not found. Token is invalid.',
+        });
+      }
+      next();
+    } catch (error) {
+      return res.status(401).json({
+        success: false,
+        message: 'Invalid or expired token. Please login again.',
+      });
+    }
+  } catch (error) {
+    next(error);
+  }
+};
+
+const adminOnly = (req, res, next) => {
+  if (req.user && req.user.role === 'admin') {
+    next();
+  } else {
+    return res.status(403).json({
+      success: false,
+      message: 'Access denied. Admin only.',
+    });
+  }
+};
+
+module.exports = { login, protect, adminOnly };
