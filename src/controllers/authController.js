@@ -1,8 +1,7 @@
 const jwt = require('jsonwebtoken');
-const User = require('../models/User');
 
 // ======================
-//  SIMPLE DIRECT LOGIN
+//  ENV-BASED ADMIN LOGIN
 // ======================
 const login = async (req, res) => {
   try {
@@ -15,27 +14,26 @@ const login = async (req, res) => {
       });
     }
 
-    // Find admin user
-    const user = await User.findOne({ email }).select('+password');
+    const adminEmail = process.env.ADMIN_EMAIL;
+    const adminPassword = process.env.ADMIN_PASSWORD;
 
-    if (!user || user.role !== 'admin') {
+    if (!adminEmail || !adminPassword) {
+      console.error('ADMIN_EMAIL or ADMIN_PASSWORD is not defined in environment variables');
+      return res.status(500).json({
+        success: false,
+        message: 'Server configuration error. Please contact administrator.',
+      });
+    }
+
+    if (email !== adminEmail || password !== adminPassword) {
       return res.status(401).json({
         success: false,
         message: 'Invalid credentials',
       });
     }
 
-    // DIRECT plain text password comparison (no salt, no hash)
-    if (user.password !== password) {
-      return res.status(401).json({
-        success: false,
-        message: 'Invalid credentials',
-      });
-    }
-
-    // Generate JWT token
     const token = jwt.sign(
-      { id: user._id, role: user.role },
+      { email: adminEmail, role: 'admin' },
       process.env.JWT_SECRET,
       { expiresIn: '30d' }
     );
@@ -44,10 +42,10 @@ const login = async (req, res) => {
       success: true,
       token,
       user: {
-        id: user._id,
-        name: user.name,
-        email: user.email,
-        role: user.role,
+        id: 'env-admin',
+        name: 'Admin',
+        email: adminEmail,
+        role: 'admin',
       },
     });
   } catch (error) {
@@ -81,14 +79,23 @@ const protect = async (req, res, next) => {
 
     try {
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
-      req.user = await User.findById(decoded.id).select('-password');
-
-      if (!req.user) {
-        return res.status(401).json({
-          success: false,
-          message: 'User not found. Token is invalid.',
-        });
+      
+      if (decoded.email) {
+        req.user = {
+          id: decoded.id || 'env-admin',
+          email: decoded.email,
+          role: decoded.role || 'admin',
+        };
+      } else {
+        req.user = await User.findById(decoded.id).select('-password');
+        if (!req.user) {
+          return res.status(401).json({
+            success: false,
+            message: 'User not found. Token is invalid.',
+          });
+        }
       }
+      
       next();
     } catch (error) {
       return res.status(401).json({
