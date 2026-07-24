@@ -21,13 +21,22 @@ const protect = async (req, res, next) => {
 
     try {
       const decoded = jwt.verify(token, process.env.JWT_SECRET);
-      req.user = await User.findById(decoded.id).select('-password');
 
-      if (!req.user) {
-        return res.status(401).json({
-          success: false,
-          message: 'User not found. Token is invalid.',
-        });
+      if (decoded.email) {
+        req.user = {
+          id: decoded.id || 'env-admin',
+          email: decoded.email,
+          role: decoded.role || 'admin',
+        };
+      } else {
+        req.user = await User.findById(decoded.id).select('-password');
+
+        if (!req.user) {
+          return res.status(401).json({
+            success: false,
+            message: 'User not found. Token is invalid.',
+          });
+        }
       }
 
       next();
